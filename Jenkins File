@@ -1,0 +1,48 @@
+pipeline {
+    agent any
+    
+    environment {
+        DOCKER_IMAGE = 'hshar/webapp'
+        DOCKER_TAG = 'latest'
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                script {
+                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                }
+            }
+        }
+        
+        stage('Test') {
+            steps {
+                script {
+                    docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").inside {
+                        sh 'echo "Running tests..."'
+                        // Add your actual test commands here
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy') {
+            when {
+                branch 'master'
+            }
+            steps {
+                script {
+                    sshagent(['prod-server-creds']) {
+                        sh "ssh -o StrictHostKeyChecking=no user@prod-server-ip 'cd /opt/webapp && docker-compose pull && docker-compose up -d'"
+                    }
+                }
+            }
+        }
+    }
+}
