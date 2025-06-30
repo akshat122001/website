@@ -3,6 +3,8 @@ pipeline {
     environment {
         DOCKER_IMAGE = 'akshat122001/webapp'
         BUILD_ID = "${env.BUILD_NUMBER}"
+        // Enable modern Docker builds
+        DOCKER_BUILDKIT = "1"
     }
     stages {
         stage('Checkout') {
@@ -12,9 +14,6 @@ pipeline {
         }
         
         stage('Build') {
-            environment {
-                DOCKER_BUILDKIT = "1"  # Enable modern Docker builds
-            }
             steps {
                 script {
                     if (!fileExists('Dockerfile')) {
