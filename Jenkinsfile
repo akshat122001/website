@@ -1,23 +1,38 @@
 pipeline {
     agent any
+    environment {
+        DOCKER_IMAGE = 'akshat122001/webapp'
+        PROD_SERVER = 'your-production-server-ip'
+    }
     stages {
         stage('Build') {
             steps {
-                echo 'Building...'
-                sh 'docker build -t my-webapp .'
+                script {
+                    docker.build("${DOCKER_IMAGE}:${env.BUILD_ID}")
+                }
             }
         }
         stage('Test') {
             steps {
-                echo 'Testing...'
+                script {
+                    docker.image("${DOCKER_IMAGE}:${env.BUILD_ID}").inside {
+                        sh 'curl -I http://localhost || exit 1'
+                    }
+                }
             }
         }
         stage('Deploy') {
-            when {
-                branch 'master'
-            }
+            when { branch 'master' }
             steps {
-                echo 'Deploying to production...'
+                script {
+                    sshagent(['prod-server-creds']) {
+                        sh """
+                        ssh -o StrictHostKeyChecking=no root@${PROD_SERVER} \
+                        "docker pull ${DOCKER_IMAGE}:${env.BUILD_ID} && \
+                        docker-compose -f /opt/webapp/docker-compose.yml up -d"
+                        """
+                    }
+                }
             }
         }
     }
